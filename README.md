@@ -1,1 +1,335 @@
-Game Platform Launcher
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>X-Portal Gaming Platform</title>
+    <style>
+        :root {
+            --bg-primary: #0f0f1a;
+            --bg-secondary: #1a1a2e;
+            --accent-primary: #6a11cb;
+            --accent-secondary: #2575fc;
+            --text-primary: #e0e0ff;
+            --text-secondary: #a0a0c0;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            height: 100vh;
+            display: flex;
+            overflow: hidden;
+        }
+
+        /* Fixed Background Particles */
+        .background-particles {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        .platform-container {
+            position: relative;
+            z-index: 1;
+            display: flex;
+            width: 100%;
+            height: 100%;
+        }
+
+        /* Sidebar Navigation */
+        .sidebar {
+            width: 320px;
+            background: rgba(20, 20, 40, 0.9);
+            backdrop-filter: blur(15px);
+            padding: 30px 20px;
+            display: flex;
+            flex-direction: column;
+            border-right: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 10px 0 30px rgba(0,0,0,0.5);
+        }
+
+        .logo {
+            text-align: center;
+            margin-bottom: 40px;
+            font-size: 2.2rem;
+            letter-spacing: 4px;
+            background: linear-gradient(to right, #6a11cb, #2575fc);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-weight: 900;
+        }
+
+        /* Upload Button */
+        .upload-section {
+            margin-bottom: 30px;
+            text-align: center;
+        }
+
+        .upload-btn {
+            width: 100%;
+            background: linear-gradient(45deg, var(--accent-primary), var(--accent-secondary));
+            color: white;
+            border: none;
+            padding: 15px;
+            border-radius: 12px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            box-shadow: 0 4px 15px rgba(106, 17, 203, 0.3);
+        }
+
+        .upload-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(106, 17, 203, 0.5);
+        }
+
+        #gameUpload { display: none; }
+
+        /* Game Library List */
+        .game-library {
+            flex-grow: 1;
+            overflow-y: auto;
+            padding-right: 5px;
+        }
+
+        .game-library::-webkit-scrollbar { width: 4px; }
+        .game-library::-webkit-scrollbar-thumb { background: var(--accent-primary); border-radius: 10px; }
+
+        .game-card {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 15px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.2s ease;
+        }
+
+        .game-card:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: var(--accent-secondary);
+        }
+
+        .game-name {
+            font-size: 1.1rem;
+            margin-bottom: 15px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            display: block;
+        }
+
+        .game-actions {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .btn-play {
+            background: #00c853;
+            color: white;
+            border: none;
+            padding: 8px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        .btn-delete {
+            background: rgba(255, 0, 0, 0.2);
+            color: #ff5252;
+            border: 1px solid #ff5252;
+            padding: 8px;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+
+        .btn-play:hover { background: #00e676; }
+        .btn-delete:hover { background: #ff5252; color: white; }
+
+        /* Game Viewport */
+        .game-viewport {
+            flex-grow: 1;
+            background: #000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+        }
+
+        #gameDisplay {
+            width: 100%;
+            height: 100%;
+            border: none;
+            display: none; /* Shown on play */
+        }
+
+        .welcome-msg {
+            text-align: center;
+            opacity: 0.5;
+        }
+    </style>
+</head>
+<body>
+    <canvas class="background-particles"></canvas>
+
+    <div class="platform-container">
+        <aside class="sidebar">
+            <div class="logo">X-PORTAL</div>
+            
+            <div class="upload-section">
+                <input type="file" id="gameUpload" accept=".html">
+                <button class="upload-btn" onclick="document.getElementById('gameUpload').click()">
+                    + Add New Game
+                </button>
+            </div>
+
+            <div class="game-library" id="gameList">
+                <!-- Games appear here -->
+            </div>
+        </aside>
+
+        <main class="game-viewport">
+            <div id="welcome" class="welcome-msg">
+                <h2>No Game Selected</h2>
+                <p>Select a game from your library to start playing</p>
+            </div>
+            <iframe id="gameDisplay"></iframe>
+        </main>
+    </div>
+
+    <script>
+        class GamePlatform {
+            constructor() {
+                this.games = JSON.parse(localStorage.getItem('gameLibrary')) || [];
+                this.gameList = document.getElementById('gameList');
+                this.gameUpload = document.getElementById('gameUpload');
+                this.gameDisplay = document.getElementById('gameDisplay');
+                this.welcome = document.getElementById('welcome');
+                
+                this.init();
+            }
+
+            init() {
+                // Handle File Uploads
+                this.gameUpload.addEventListener('change', (e) => {
+                    const file = e.target.files[0];
+                    if (!file) return;
+
+                    const reader = new FileReader();
+                    reader.onload = (event) => {
+                        const newGame = {
+                            id: 'idx-' + Date.now(),
+                            name: file.name.replace('.html', ''),
+                            content: event.target.result
+                        };
+                        this.games.push(newGame);
+                        this.saveAndRefresh();
+                    };
+                    reader.readAsText(file);
+                });
+
+                this.render();
+                this.initParticles();
+            }
+
+            saveAndRefresh() {
+                localStorage.setItem('gameLibrary', JSON.stringify(this.games));
+                this.render();
+            }
+
+            render() {
+                this.gameList.innerHTML = '';
+                
+                if (this.games.length === 0) {
+                    this.gameList.innerHTML = '<p style="text-align:center; opacity:0.4;">Library is empty</p>';
+                    return;
+                }
+
+                this.games.forEach(game => {
+                    const card = document.createElement('div');
+                    card.className = 'game-card';
+                    card.innerHTML = `
+                        <span class="game-name">${game.name}</span>
+                        <div class="game-actions">
+                            <button class="btn-play">START</button>
+                            <button class="btn-delete">DELETE</button>
+                        </div>
+                    `;
+
+                    // Start Button Logic
+                    card.querySelector('.btn-play').onclick = () => {
+                        this.welcome.style.display = 'none';
+                        this.gameDisplay.style.display = 'block';
+                        this.gameDisplay.srcdoc = game.content;
+                    };
+
+                    // Delete Button Logic
+                    card.querySelector('.btn-delete').onclick = () => {
+                        if (confirm('Are you sure you want to remove this game?')) {
+                            this.games = this.games.filter(g => g.id !== game.id);
+                            this.saveAndRefresh();
+                            this.gameDisplay.style.display = 'none';
+                            this.gameDisplay.srcdoc = '';
+                            this.welcome.style.display = 'block';
+                        }
+                    };
+
+                    this.gameList.appendChild(card);
+                });
+            }
+
+            initParticles() {
+                const canvas = document.querySelector('.background-particles');
+                const ctx = canvas.getContext('2d');
+                let pts = [];
+
+                const resize = () => {
+                    canvas.width = window.innerWidth;
+                    canvas.height = window.innerHeight;
+                };
+
+                window.addEventListener('resize', resize);
+                resize();
+
+                for(let i=0; i<80; i++) {
+                    pts.push({
+                        x: Math.random() * canvas.width,
+                        y: Math.random() * canvas.height,
+                        vx: (Math.random() - 0.5) * 0.4,
+                        vy: (Math.random() - 0.5) * 0.4,
+                        r: Math.random() * 2
+                    });
+                }
+
+                const anim = () => {
+                    ctx.clearRect(0,0, canvas.width, canvas.height);
+                    ctx.fillStyle = 'rgba(106, 17, 203, 0.3)';
+                    pts.forEach(p => {
+                        p.x += p.vx; p.y += p.vy;
+                        if(p.x < 0 || p.x > canvas.width) p.vx *= -1;
+                        if(p.y < 0 || p.y > canvas.height) p.vy *= -1;
+                        ctx.beginPath();
+                        ctx.arc(p.x, p.y, p.r, 0, Math.PI*2);
+                        ctx.fill();
+                    });
+                    requestAnimationFrame(anim);
+                };
+                anim();
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => new GamePlatform());
+    </script>
+</body>
+</html>
