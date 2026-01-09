@@ -1,1 +1,1 @@
-# minecraft-web-launcher
+Game Platform Launcher
